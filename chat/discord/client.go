@@ -3,7 +3,11 @@ package discord
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -116,6 +120,50 @@ func (self *Client) Send(channelID, content string) (chat.MessageRef, error) {
 		return chat.MessageRef{}, err
 	}
 	return chat.MessageRef{ChannelID: m.ChannelID, MessageID: m.ID}, nil
+}
+
+// SendFile posts a message with one file attached.
+func (self *Client) SendFile(channelID, content, path string) (chat.MessageRef, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return chat.MessageRef{}, err
+	}
+	defer f.Close()
+	st, err := f.Stat()
+	if err != nil {
+		return chat.MessageRef{}, err
+	}
+	if st.IsDir() {
+		return chat.MessageRef{}, fmt.Errorf("not a file: %s", path)
+	}
+	m, err := self.discord_go.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
+		Content:         truncate(content),
+		Files:           []*discordgo.File{{Name: st.Name(), Reader: f}},
+		AllowedMentions: noMentions(),
+	})
+	if err != nil {
+		if isFileTooLarge(err) {
+			return chat.MessageRef{}, fmt.Errorf("%w: %s (%d bytes)", chat.ErrFileTooLarge, st.Name(), st.Size())
+		}
+		return chat.MessageRef{}, err
+	}
+	return chat.MessageRef{ChannelID: m.ChannelID, MessageID: m.ID}, nil
+}
+
+// isFileTooLarge reports whether Discord rejected the upload for its size.
+func isFileTooLarge(err error) bool {
+	var re *discordgo.RESTError
+	if errors.As(err, &re) {
+		if re.Response != nil && re.Response.StatusCode == http.StatusRequestEntityTooLarge {
+			return true
+		}
+		if re.Message != nil && re.Message.Code == 40005 {
+			return true
+		}
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "40005") || strings.Contains(msg, "request entity too large") ||
+		strings.Contains(msg, "too large") || strings.Contains(msg, "413")
 }
 
 // Reply posts a message as a reply to replyTo.
@@ -318,6 +366,7 @@ func (self *Client) onMessageCreate(s *discordgo.Session, m *discordgo.MessageCr
 		AuthorID:     m.Author.ID,
 		AuthorName:   m.Author.Username,
 		Content:      m.Content,
+		Attachments:  toAttachments(m.Attachments),
 		MentionedBot: self.mentioned(m),
 		GuildID:      m.GuildID,
 		Timestamp:    m.Timestamp,

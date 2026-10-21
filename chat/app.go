@@ -36,6 +36,9 @@ type App interface {
 
 	// Send posts a message.
 	Send(channelID, content string) (MessageRef, error)
+	// SendFile posts a message with one file attached.
+	// Returns ErrFileTooLarge when the platform rejects the file size.
+	SendFile(channelID, content, path string) (MessageRef, error)
 	// Reply posts a message as a reply to replyTo.
 	Reply(channelID string, replyTo string, content string) (MessageRef, error)
 	// Edit replaces the content of a message.

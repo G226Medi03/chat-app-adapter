@@ -19,6 +19,15 @@ type Channel struct {
 	IsThread   bool
 }
 
+// Attachment is a file uploaded with an inbound message.
+type Attachment struct {
+	ID          string
+	Name        string
+	URL         string
+	Size        int64
+	ContentType string
+}
+
 // Message is an inbound user message.
 type Message struct {
 	ID           string
@@ -26,6 +35,7 @@ type Message struct {
 	AuthorID     string
 	AuthorName   string
 	Content      string
+	Attachments  []Attachment
 	MentionedBot bool
 	GuildID      string
 	IsDM         bool
