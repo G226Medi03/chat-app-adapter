@@ -43,6 +43,8 @@ type App interface {
 	Reply(channelID string, replyTo string, content string) (MessageRef, error)
 	// Edit replaces the content of a message.
 	Edit(ref MessageRef, content string) error
+	// Delete removes a message.
+	Delete(ref MessageRef) error
 
 	// SendButtons posts a message with an action row of buttons.
 	SendButtons(channelID, content string, buttons []Button) (MessageRef, error)

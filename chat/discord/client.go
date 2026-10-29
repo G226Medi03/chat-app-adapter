@@ -188,6 +188,11 @@ func (self *Client) Edit(ref chat.MessageRef, content string) error {
 	return err
 }
 
+// Delete removes a message.
+func (self *Client) Delete(ref chat.MessageRef) error {
+	return self.discord_go.ChannelMessageDelete(ref.ChannelID, ref.MessageID)
+}
+
 // SendButtons posts a message with an action row of buttons.
 func (self *Client) SendButtons(channelID, content string, buttons []chat.Button) (chat.MessageRef, error) {
 	row := discordgo.ActionsRow{Components: make([]discordgo.MessageComponent, 0, len(buttons))}
